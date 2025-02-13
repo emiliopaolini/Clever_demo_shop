@@ -1,0 +1,1 @@
+# Clever_demo_shop
