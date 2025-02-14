@@ -23,27 +23,35 @@ class APICallSimulator:
         self.probabilities = {k: v/total_weight for k, v in self.endpoints.items()}
         
     def calculate_rate(self, x):
-        """Calculate the current rate based on the diurnal pattern"""
+        """Calculate the current rate based on the diurnal pattern with random peak shifts and noise."""
+        # Compute minute-of-day (x modulo 1440)
         minutes_of_day = x - np.floor(x / 1440) * 1440
         
-        # First peak at 12:00 (720 minutes)
-        peak1 = np.exp(-((minutes_of_day - 720)**2 / (2 * 120**2)))
-        # Second peak at 18:00 (1080 minutes)
-        peak2 = 0.5 * np.exp(-((minutes_of_day - 1080)**2 / (2 * 120**2)))
+        # Generate slight random shifts for each peak (in minutes)
+        shift1 = random.uniform(-10, 10)  # shift for the first peak (around 12:00)
+        shift2 = random.uniform(-10, 10)  # shift for the second peak (around 18:00)
         
-        # Add base rate, peaks, and random noise
-        rate = 50 + 30 * (peak1 + peak2) + (random.random() * 10 - 5)
+        # First peak centered at 720 + shift1 minutes (12:00 plus random offset)
+        peak1 = np.exp(-((minutes_of_day - (720 + shift1))**2) / (2 * 120**2))
+        # Second peak centered at 1080 + shift2 minutes (18:00 plus random offset)
+        peak2 = 0.5 * np.exp(-((minutes_of_day - (1080 + shift2))**2) / (2 * 120**2))
+        
+        # Generate random noise in the range [-5, 5]
+        noise = random.random() * 10 - 5
+        
+        # Calculate the rate: base 50 plus scaled peaks and noise
+        rate = 50 + 30 * (peak1 + peak2) + noise
         return max(0, rate)  # Ensure non-negative rate
 
     def select_endpoint(self):
-        """Select an endpoint based on probabilities"""
+        """Select an endpoint based on probabilities."""
         return random.choices(
             list(self.endpoints.keys()),
             weights=list(self.probabilities.values())
         )[0]
 
     def simulate_api_call(self, endpoint):
-        """Simulate an API call (replace with actual API endpoints)"""
+        """Simulate an API call (replace with actual API endpoints)."""
         full_url = f"{self.base_url}{endpoint}"
         try:
             # Uncomment the next line to perform an actual API call:
