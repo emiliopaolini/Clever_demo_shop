@@ -1,16 +1,13 @@
-# 50 + 30 * (exp(-(((x - floor(x/1440) * 1440) - 720)^2 / (2 * 120^2))) + 0.5 * exp(-(((x - floor(x/1440) * 1440) - 1080)^2 / (2 * 120^2)))) + (random() * 10 - 5)
-
-# f(x)=50+30 (ℯ^(-(((x-floor(((x)/(1440)))*1440-720)^(2))/(2*120^(2))))+0.5 ℯ^(-(((x-floor(((x)/(1440)))*1440-1080)^(2))/(2*120^(2)))))+random()*10-5
- 
-
 import numpy as np
 import time
 from datetime import datetime
 import requests
 import random
+import argparse
 
 class APICallSimulator:
-    def __init__(self):
+    def __init__(self, base_url):
+        self.base_url = base_url.rstrip('/') + '/'  # ensure trailing slash
         # Endpoint weights
         self.endpoints = {
             'index': 1,
@@ -21,13 +18,13 @@ class APICallSimulator:
             'checkout': 1
         }
         
-        # Calculate probabilities
+        # Calculate probabilities from weights
         total_weight = sum(self.endpoints.values())
         self.probabilities = {k: v/total_weight for k, v in self.endpoints.items()}
         
     def calculate_rate(self, x):
         """Calculate the current rate based on the diurnal pattern"""
-        minutes_of_day = x - np.floor(x/1440) * 1440
+        minutes_of_day = x - np.floor(x / 1440) * 1440
         
         # First peak at 12:00 (720 minutes)
         peak1 = np.exp(-((minutes_of_day - 720)**2 / (2 * 120**2)))
@@ -47,11 +44,11 @@ class APICallSimulator:
 
     def simulate_api_call(self, endpoint):
         """Simulate an API call (replace with actual API endpoints)"""
-        base_url = "http://your-api-endpoint.com/"
+        full_url = f"{self.base_url}{endpoint}"
         try:
-            # Simulate API call (commented out to avoid actual calls)
-            # response = requests.get(f"{base_url}{endpoint}")
-            print(f"Called endpoint: {endpoint} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            # Uncomment the next line to perform an actual API call:
+            # response = requests.get(full_url)
+            print(f"Called endpoint: {full_url} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         except Exception as e:
             print(f"Error calling {endpoint}: {str(e)}")
 
@@ -64,10 +61,7 @@ class APICallSimulator:
             current_rate = self.calculate_rate(current_minute)
             
             # Convert rate per minute to delay in seconds
-            if current_rate > 0:
-                delay = 60 / current_rate
-            else:
-                delay = 60  # Default to one call per minute if rate is 0
+            delay = 60 / current_rate if current_rate > 0 else 60
             
             # Select and call endpoint
             endpoint = self.select_endpoint()
@@ -77,5 +71,21 @@ class APICallSimulator:
             minute_counter = int(current_minute)
 
 if __name__ == "__main__":
-    simulator = APICallSimulator()
-    simulator.run()
+    parser = argparse.ArgumentParser(description="API Call Simulator")
+    parser.add_argument(
+        "--base_url", 
+        type=str, 
+        required=True,
+        help="The base URL for API calls (e.g., http://your-api-endpoint.com/)"
+    )
+    parser.add_argument(
+        "--duration", 
+        type=int, 
+        default=1440,
+        help="Duration to run the simulation in minutes (default: 1440)"
+    )
+    
+    args = parser.parse_args()
+    
+    simulator = APICallSimulator(args.base_url)
+    simulator.run(duration_minutes=args.duration)
