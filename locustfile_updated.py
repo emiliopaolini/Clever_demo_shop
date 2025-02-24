@@ -15,12 +15,14 @@
 # limitations under the License.
 
 import random
-import math
-from locust import FastHttpUser, TaskSet, between, LoadTestShape
-from faker import Faker
+import numpy as np
 import datetime
+from locust import FastHttpUser, TaskSet, between
+from faker import Faker
+
 fake = Faker()
 
+# Define your products and endpoint functions as before
 products = [
     '0PUK6V6EV0',
     '1YMWWN1N4O',
@@ -37,8 +39,7 @@ def index(l):
 
 def setCurrency(l):
     currencies = ['EUR', 'USD', 'JPY', 'CAD', 'GBP', 'TRY']
-    l.client.post("/setCurrency",
-        {'currency_code': random.choice(currencies)})
+    l.client.post("/setCurrency", {'currency_code': random.choice(currencies)})
 
 def browseProduct(l):
     l.client.get("/product/" + random.choice(products))
@@ -51,14 +52,15 @@ def addToCart(l):
     l.client.get("/product/" + product)
     l.client.post("/cart", {
         'product_id': product,
-        'quantity': random.randint(1,10)})
-    
+        'quantity': random.randint(1,10)
+    })
+
 def empty_cart(l):
     l.client.post('/cart/empty')
 
 def checkout(l):
     addToCart(l)
-    current_year = datetime.datetime.now().year+1
+    current_year = datetime.datetime.now().year + 1
     l.client.post("/cart/checkout", {
         'email': fake.email(),
         'street_address': fake.street_address(),
@@ -71,64 +73,51 @@ def checkout(l):
         'credit_card_expiration_year': random.randint(current_year, current_year + 70),
         'credit_card_cvv': f"{random.randint(100, 999)}",
     })
-    
+
 def logout(l):
     l.client.get('/logout')  
 
 
-class UserBehavior(TaskSet):
+# Custom wait time function that simulates a diurnal load with randomness
+def diurnal_wait_time():
+    # Current time in minutes since midnight (with seconds fraction)
+    now = datetime.datetime.now()
+    current_minute = now.hour * 60 + now.minute + now.second / 60.0
+    
+    # Compute minutes of day (mod 1440, though current_minute is already in [0,1440))
+    minutes_of_day = current_minute % 1440
 
+    # Generate slight random shifts for each peak (in minutes)
+    shift1 = random.uniform(-10, 10)  # for the first peak (around noon)
+    shift2 = random.uniform(-10, 10)  # for the second peak (around 18:00)
+    
+    # Calculate the two Gaussian peaks
+    peak1 = np.exp(-((minutes_of_day - (720 + shift1)) ** 2) / (2 * 120 ** 2))
+    peak2 = 0.5 * np.exp(-((minutes_of_day - (1080 + shift2)) ** 2) / (2 * 120 ** 2))
+    
+    # Add base rate, scaled peaks, and random noise in the range [-5, 5]
+    rate = 50 + 30 * (peak1 + peak2) + (random.random() * 10 - 5)
+    
+    # Ensure rate is non-negative and then calculate delay in seconds.
+    # Rate is in calls per minute, so delay = 60 / rate.
+    if rate <= 0:
+        return 60  # fallback delay if something goes wrong
+    return 60 / rate
+
+class UserBehavior(TaskSet):
     def on_start(self):
         index(self)
 
-    tasks = {index: 1,
+    tasks = {
+        index: 1,
         setCurrency: 2,
         browseProduct: 10,
         addToCart: 2,
         viewCart: 3,
-        checkout: 1}
+        checkout: 1
+    }
 
 class WebsiteUser(FastHttpUser):
     tasks = [UserBehavior]
-    wait_time = between(1, 10)
-
-class DiurnalLoadShape(LoadTestShape):
-    """
-    A simple diurnal load shape with two daily peaks:
-      - One peak around 12:00 (noon)
-      - Another, smaller peak around 18:00 (6 p.m.)
-    We add random shifts (±10 minutes) so that the peaks do not occur at exactly
-    the same time each day, plus some noise for realism.
-    """
-
-    total_run_time = 600
-
-    def tick(self):
-        run_time = self.get_run_time()
-
-        if run_time > self.total_run_time:
-            return None
-        
-        scaled_run_time = run_time * 144
-
-        current_minute = (scaled_run_time // 60) % 1440
-
-        # shift_peak1 = random.uniform(-10, 10)
-        # shift_peak2 = random.uniform(-10, 10)
-        # you should add shift_peak to 720 and 1080 
-        # respectively if you want to run this test over multiple days
-
-        peak1 = math.exp(-((current_minute - 720)**2) / (2 * 120**2))
-        peak2 = 0.5 * math.exp(-((current_minute - 1080)**2) / (2 * 120**2))
-
-        noise = random.uniform(-5, 5)
-
-        user_count = 50 + 250 * (peak1 + peak2) + noise
-
-        if user_count < 0:
-            user_count = 0
-
-        user_count = int(user_count)
-        spawn_rate = user_count
-
-        return (user_count, spawn_rate)
+    # Override the wait_time function to use the diurnal wait time
+    wait_time = diurnal_wait_time

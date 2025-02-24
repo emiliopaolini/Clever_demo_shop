@@ -1,0 +1,5 @@
+locust==2.32.8
+faker==35.2.0
+numpy==2.2.3
+matplotlib==3.10.0
+pandas==2.2.3
