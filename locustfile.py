@@ -19,6 +19,7 @@ import math
 from locust import FastHttpUser, TaskSet, between, LoadTestShape
 from faker import Faker
 import datetime
+import csv
 fake = Faker()
 
 products = [
@@ -101,17 +102,24 @@ class DiurnalLoadShape(LoadTestShape):
     the same time each day, plus some noise for realism.
     """
 
-    total_run_time = 600
+    total_run_time = 86400
+    results = []
 
     def tick(self):
         run_time = self.get_run_time()
 
         if run_time > self.total_run_time:
+            fieldnames = ["run_time", "user_count"]
+            with open("user_count.csv", "w", newline="") as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                for row in self.results:
+                    writer.writerow(row)
             return None
         
-        scaled_run_time = run_time * 144
+        # scaled_run_time = run_time * 144
 
-        current_minute = (scaled_run_time // 60) % 1440
+        current_minute = (run_time // 60) % 1440
 
         # shift_peak1 = random.uniform(-10, 10)
         # shift_peak2 = random.uniform(-10, 10)
@@ -130,5 +138,7 @@ class DiurnalLoadShape(LoadTestShape):
 
         user_count = int(user_count)
         spawn_rate = user_count
+
+        self.results.append({"run_time": run_time, "user_count": user_count})
 
         return (user_count, spawn_rate)

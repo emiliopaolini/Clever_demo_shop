@@ -96,7 +96,7 @@ def main():
     run_locust(locust_cmd)
 
     print("[Main] Locut exited")
-    time.sleep(10)
+    time.sleep(120)
 
     stop_event.set()
     collector_thread.join()
