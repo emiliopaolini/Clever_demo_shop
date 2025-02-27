@@ -47,12 +47,13 @@ print("Training data shape, X:", X.shape, "y:", y.shape)
 
 # ----- Build and Train the LSTM Model -----
 model = Sequential()
-model.add(LSTM(20, input_shape=(window_size, X.shape[2])))
+model.add(LSTM(100, input_shape=(window_size, X.shape[2])))
 model.add(Dense(1))  # Predicting CPU usage.
 model.compile(loss="mean_squared_error", optimizer="adam")
 
 history = model.fit(X, y, epochs=20, batch_size=64, validation_split=0.1)
-model.save("lstm_cpu_usage_model.h5")
+model.save("./LSTM_model", save_format="tf")
+
 
 # ----- (Optional) Plot Training History -----
 plt.figure(figsize=(8,4))
@@ -62,4 +63,4 @@ plt.title("Training Loss")
 plt.legend()
 plt.show()
 
-print("Training complete. Model saved as 'lstm_cpu_usage_model.h5' and scaler as 'scaler.pkl'.")
+print("Training complete. Model saved as 'LSTM_model' and scaler as 'scaler.pkl'.")

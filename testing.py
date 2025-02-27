@@ -1,7 +1,8 @@
 import pandas as pd
 import numpy as np
 import joblib
-from tensorflow.keras.models import load_model
+import tensorflow as tf
+
 import matplotlib.pyplot as plt
 
 # ----- Load and Preprocess Test Data -----
@@ -43,7 +44,7 @@ n = len(y)
 print("Number of predictions:", n)
 
 # ----- Load the Trained Model and Make Predictions -----
-model = load_model("lstm_cpu_usage_model.h5")
+model = tf.keras.models.load_model('./LSTM_model')
 predictions = model.predict(X)
 
 # Invert scaling for CPU usage (first feature) using the scaler parameters.
@@ -71,7 +72,7 @@ plt.figure(figsize=(14, 6))
 # Plot the full actual CPU usage from the test data.
 plt.plot(df_rec["timestamp"], df_rec["usage_cpu"], label="Actual CPU Usage", color="blue")
 # Overlay the predicted CPU usage at the shifted forecast timestamps.
-plt.plot(timestamps_pred_shifted, predictions_cpu, label="Predicted CPU Usage (forecast made at t)", linestyle="--", color="red")
+plt.plot(timestamps_pred_shifted, predictions_cpu, label="Predicted CPU Usage", linestyle="--", color="red")
 plt.xlabel("Timestamp")
 plt.ylabel("CPU Usage")
 plt.title("Actual vs. Predicted CPU Usage")
